@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Static File Viewer</title>
+  <style>
+    body {
+      background: black;
+      color: white;
+      font-family: monospace;
+      padding: 1rem;
+      display: flex;
+      gap: 2rem;
+    }
+    .tree {
+      white-space: pre;
+      min-width: 300px;
+    }
+    .file:hover {
+      background-color: #222;
+      cursor: pointer;
+    }
+    #viewer {
+      flex-grow: 1;
+      background: #111;
+      padding: 1rem;
+      border: 1px solid #444;
+      overflow: auto;
+      max-width: 70vw;
+    }
+    img, video, audio {
+      max-width: 100%;
+      max-height: 80vh;
+    }
+    video, audio {
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div class="tree" id="file-tree">Loading...</div>
+  <div id="viewer"></div>
+
+  <script>
+    async function fetchTree() {
+      const res = await fetch('tree.json');
+      return res.json();
+    }
+
+    function isImageFile(filename) {
+      return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
+    }
+
+    function isAudioFile(filename) {
+      return /\.(mp3|ogg|wav|m4a|aac)$/i.test(filename);
+    }
+
+    function isVideoFile(filename) {
+      return /\.(mp4|webm|ogv|mkv)$/i.test(filename);
+    }
+
+    function buildTreeLines(nodeList, prefixes = [], basePath = '') {
+      let lines = [];
+
+      nodeList.forEach((node, idx) => {
+        const isLast = idx === nodeList.length - 1;
+        let prefixStr = '';
+        for (let i = 0; i < prefixes.length; i++) {
+          prefixStr += prefixes[i] ? '│  ' : '   ';
+        }
+        const branch = isLast ? '└─ ' : '├─ ';
+        const fullPath = basePath + node.name;
+
+        const line = document.createElement('div');
+        line.textContent = prefixStr + branch + node.name;
+
+        if (!node.children) {
+          line.className = 'file';
+          line.onclick = () => {
+            const viewer = document.getElementById('viewer');
+            viewer.innerHTML = '';
+
+            const src = 'files/' + fullPath;
+
+            if (isImageFile(fullPath)) {
+              const img = document.createElement('img');
+              img.src = src;
+              viewer.appendChild(img);
+            } else if (isAudioFile(fullPath)) {
+              const audio = document.createElement('audio');
+              audio.controls = true;
+              audio.src = src;
+              viewer.appendChild(audio);
+            } else if (isVideoFile(fullPath)) {
+              const video = document.createElement('video');
+              video.controls = true;
+              video.src = src;
+              viewer.appendChild(video);
+            } else {
+              fetch(src)
+                .then(res => res.text())
+                .then(text => {
+                  const pre = document.createElement('pre');
+                  pre.textContent = text;
+                  viewer.appendChild(pre);
+                });
+            }
+          };
+        }
+
+        lines.push(line);
+
+        if (node.children) {
+          const childLines = buildTreeLines(node.children, prefixes.concat(!isLast), fullPath + '/');
+          lines.push(...childLines);
+        }
+      });
+
+      return lines;
+    }
+
+    async function renderTree() {
+      const data = await fetchTree();
+
+      const rootName = 'nil/';
+      const treeContainer = document.getElementById('file-tree');
+      treeContainer.innerHTML = '';
+
+      const rootLabel = document.createElement('div');
+      rootLabel.textContent = rootName;
+      treeContainer.appendChild(rootLabel);
+
+      const lines = buildTreeLines(data, [], '');
+      lines.forEach(line => treeContainer.appendChild(line));
+    }
+
+    renderTree();
+  </script>
+</body>
+</html>
