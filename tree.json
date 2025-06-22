@@ -144,5 +144,19 @@
   {
     "name": "test.txt",
     "path": "test.txt"
+  },
+  {
+    "name": "test1",
+    "children": [
+      {
+        "name": "test2",
+        "children": [
+          {
+            "name": "test.txt",
+            "path": "test1/test2/test.txt"
+          }
+        ]
+      }
+    ]
   }
 ]
