@@ -11,4 +11,4 @@ Thumbs.db
 # Ignore anything else you don't want versioned
 package.json
 package-lock.json
-build-tree.json
+build-tree.js
