@@ -8,12 +8,10 @@
       background: black;
       color: white;
       font-family: monospace;
-      display: flex;
       margin: 0;
-      height: 100vh;
-    }
-    pre {
       padding: 0;
+      height: 100vh;
+      overflow: hidden;
     }
     .layout {
       display: flex;
@@ -23,15 +21,27 @@
       box-sizing: border-box;
     }
     .tree {
-      min-width: 256px;
       width: 256px;
+      min-width: 256px;
+      max-width: 256px;
       border: 1px solid #444;
       border-right: none;
       padding: 1rem;
       background: #111;
+      overflow-x: auto;
+      overflow-y: auto;
     }
-    .file:hover, .folder-container:hover {
+    .tree-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      white-space: pre;
+    }
+    .tree-item:hover {
       background-color: #222;
+    }
+    .folder-toggle {
+      margin-right: 4px;
       cursor: pointer;
     }
     #viewer {
@@ -40,6 +50,7 @@
       padding: 1rem;
       border: 1px solid #444;
       display: flex;
+      overflow: auto;
     }
     img, video, audio {
       max-width: 100%;
@@ -58,6 +69,9 @@
   </div>
 
   <script>
+    let treeData = null;
+    let expandedFolders = new Set();
+
     async function fetchTree() {
       const res = await fetch('tree.json');
       return res.json();
@@ -75,80 +89,108 @@
       return /\.(mp4|webm|ogv|mkv)$/i.test(filename);
     }
 
-    function buildTreeLines(nodeList, prefixes = [], basePath = '') {
+    function buildTreeLines(nodes, pathPrefix = '', linePrefix = '', isRoot = true) {
       let lines = [];
 
-      nodeList.forEach((node, idx) => {
-        const isLast = idx === nodeList.length - 1;
-        let prefixStr = '';
-        for (let i = 0; i < prefixes.length; i++) {
-          if (i === 0) continue;
-          prefixStr += prefixes[i] ? '│  ' : '   ';
-        }
-        const branch = prefixes.length === 0 ? '' : (isLast ? '└─ ' : '├─ ');
-        const fullPath = basePath + node.name;
+      nodes.forEach((node, index) => {
+        const isLast = index === nodes.length - 1;
+        const fullPath = pathPrefix + node.name;
 
         if (node.children) {
-          const container = document.createElement('div');
-          container.className = 'folder-container';
-          container.style.display = 'flex';
-          container.style.alignItems = 'center';
-          container.style.width = '100%';
-          container.style.cursor = 'pointer';
+          // This is a folder
+          const isExpanded = expandedFolders.has(fullPath);
 
-          const prefixText = document.createElement('span');
-          prefixText.textContent = prefixStr + branch;
+          // Add the folder line
+          lines.push({
+            type: 'folder',
+            name: node.name,
+            path: fullPath,
+            prefix: linePrefix,
+            isExpanded: isExpanded,
+            isLast: isLast,
+            isRoot: isRoot
+          });
 
-          const toggle = document.createElement('span');
-          toggle.textContent = '>'; // collapsed by default
-          toggle.style.marginRight = '4px';
-          toggle.style.cursor = 'default';
-
-          const label = document.createElement('span');
-          label.textContent = node.name + '/';
-          label.className = 'folder';
-          label.style.flexGrow = '1';
-
-          const childContainer = document.createElement('div');
-          childContainer.style.display = 'none';
-          childContainer.style.marginLeft = '0';
-
-          const childLines = buildTreeLines(node.children, prefixes.concat(!isLast), fullPath + '/');
-          childLines.forEach(child => childContainer.appendChild(child));
-
-          container.appendChild(prefixText);
-          container.appendChild(toggle);
-          container.appendChild(label);
-
-          container.onclick = () => {
-            const isVisible = childContainer.style.display === 'block';
-            childContainer.style.display = isVisible ? 'none' : 'block';
-            toggle.textContent = isVisible ? '>' : 'v';
-          };
-
-          lines.push(container);
-          lines.push(childContainer);
+          // Add children if expanded
+          if (isExpanded) {
+            const childPrefix = isRoot ? '' : linePrefix + (isLast ? '   ' : '│  ');
+            const childLines = buildTreeLines(
+              node.children,
+              fullPath + '/',
+              childPrefix,
+              false
+            );
+            lines.push(...childLines);
+          }
         } else {
-          const line = document.createElement('div');
-          line.className = 'file';
-          line.textContent = prefixStr + branch + node.name;
+          // This is a file
+          lines.push({
+            type: 'file',
+            name: node.name,
+            path: fullPath,
+            prefix: linePrefix,
+            isLast: isLast,
+            isRoot: isRoot
+          });
+        }
+      });
 
-          line.onclick = () => {
+      return lines;
+    }
+
+    function renderTree() {
+      if (!treeData) return;
+
+      const lines = buildTreeLines(treeData);
+      const container = document.getElementById('file-tree');
+      container.innerHTML = '';
+
+      lines.forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'tree-item';
+
+        let displayText = line.prefix;
+
+        // Add branch characters (but not for root level items)
+        if (!line.isRoot) {
+          displayText += line.isLast ? '└─ ' : '├─ ';
+        }
+
+        if (line.type === 'folder') {
+          const toggle = document.createElement('span');
+          toggle.className = 'folder-toggle';
+          toggle.textContent = line.isExpanded ? 'v' : '>';
+
+          div.appendChild(document.createTextNode(displayText));
+          div.appendChild(toggle);
+          div.appendChild(document.createTextNode(line.name + '/'));
+
+          div.onclick = () => {
+            if (line.isExpanded) {
+              expandedFolders.delete(line.path);
+            } else {
+              expandedFolders.add(line.path);
+            }
+            renderTree();
+          };
+        } else {
+          div.textContent = displayText + line.name;
+          div.onclick = () => {
             const viewer = document.getElementById('viewer');
             viewer.innerHTML = '';
 
-            const src = 'files/' + fullPath;
+            const src = 'files/' + line.path;
 
-            if (isImageFile(fullPath)) {
+            if (isImageFile(line.path)) {
               const img = document.createElement('img');
               img.src = src;
               viewer.appendChild(img);
-            } else if (isAudioFile(fullPath)) {
+            } else if (isAudioFile(line.path)) {
               const audio = document.createElement('audio');
               audio.controls = true;
               audio.src = src;
               viewer.appendChild(audio);
-            } else if (isVideoFile(fullPath)) {
+            } else if (isVideoFile(line.path)) {
               const video = document.createElement('video');
               video.controls = true;
               video.src = src;
@@ -163,25 +205,18 @@
                 });
             }
           };
-
-          lines.push(line);
         }
+
+        container.appendChild(div);
       });
-
-      return lines;
     }
 
-    async function renderTree() {
-      const data = await fetchTree();
-
-      const treeContainer = document.getElementById('file-tree');
-      treeContainer.innerHTML = '';
-
-      const lines = buildTreeLines(data, [], '');
-      lines.forEach(line => treeContainer.appendChild(line));
+    async function init() {
+      treeData = await fetchTree();
+      renderTree();
     }
 
-    renderTree();
+    init();
   </script>
 </body>
 </html>

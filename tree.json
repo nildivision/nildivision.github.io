@@ -116,6 +116,20 @@
               {
                 "name": "test.txt",
                 "path": "nil/test1/test2/test.txt"
+              },
+              {
+                "name": "test3",
+                "children": [
+                  {
+                    "name": "test4",
+                    "children": [
+                      {
+                        "name": "test.txt",
+                        "path": "nil/test1/test2/test3/test4/test.txt"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
