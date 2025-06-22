@@ -108,8 +108,18 @@
         ]
       },
       {
-        "name": "test.txt",
-        "path": "nil/test.txt"
+        "name": "test1",
+        "children": [
+          {
+            "name": "test2",
+            "children": [
+              {
+                "name": "test.txt",
+                "path": "nil/test1/test2/test.txt"
+              }
+            ]
+          }
+        ]
       },
       {
         "name": "welcome.txt",
