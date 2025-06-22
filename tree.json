@@ -108,9 +108,17 @@
         ]
       },
       {
+        "name": "test.txt",
+        "path": "nil/test.txt"
+      },
+      {
         "name": "welcome.txt",
         "path": "nil/welcome.txt"
       }
     ]
+  },
+  {
+    "name": "test.txt",
+    "path": "test.txt"
   }
 ]

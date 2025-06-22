@@ -1,14 +1,5 @@
-# Ignore node modules
-node_modules/
-
-# Ignore backup/OS files
-.DS_Store
-Thumbs.db
-
-# Ignore logs
-*.log
-
-# Ignore anything else you don't want versioned
+.*
+node_modules
 package.json
 package-lock.json
 build-tree.js
